@@ -21,3 +21,9 @@ Wait a minute or two after this command :)
 ### Step 2: Create tables and populate books
 
 Run `python setup.py`
+
+### Step 3: Start app
+
+Run `uvicorn api:app --reload`
+
+Then in another terminal: `npm start`
