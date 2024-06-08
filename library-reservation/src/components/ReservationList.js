@@ -133,6 +133,14 @@ function ReservationList() {
             <DeleteIcon />
           </IconButton>
         </TableCell>
+        <TableCell align="right">
+          <IconButton onClick={(event) => {
+            event.stopPropagation();
+            navigate(`/reservations/update/${row.book_id}`);
+          }}>
+            <DeleteIcon />
+          </IconButton>
+        </TableCell>
       </TableRow>
     );
   };

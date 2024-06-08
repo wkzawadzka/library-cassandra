@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-ro
 import ReservationList from './components/ReservationList';
 import ReservationForm from './components/ReservationForm';
 import ReservationDetail from './components/ReservationDetail';
+import ReservationUpdate from './components/ReservationUpdate';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/new" element={<ReservationForm />} />
           <Route path="/reservations" element={<ReservationList />} />
           <Route path="/reservations/:book_id" element={<ReservationDetail />} />
+          <Route path="/reservations/update/:book_id" element={<ReservationUpdate />} />
         </Routes>
       </div>
     </Router>

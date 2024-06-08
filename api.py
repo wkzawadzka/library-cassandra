@@ -38,6 +38,11 @@ class Reservation(BaseModel):
     book_id: UUID4
     reserved_at: datetime.datetime
 
+class Update(BaseModel):
+    old_book_id: UUID4
+    user_id: UUID4
+    book_id: UUID4
+
 
 @app.post("/reservations/", response_model=Reservation)
 def make_reservation(reservation_request: ReservationRequest):
@@ -151,6 +156,33 @@ def delete_reservation(book_id: UUID):
     delete_stmt = session.prepare(delete_query)
     session.execute(delete_stmt, (book_id,))
     return {"detail": "Reservation deleted"}
+
+
+@app.update("/reservations/update/", response_model=Reservation)
+def update_reservation(reservation_change: Update):
+    old_book_id = reservation_change.old_book_id
+    user_id = reservation_change.user_id
+    book_id = reservation_change.book_id
+
+    reservation_query = "SELECT * FROM reservations WHERE book_id = ?"
+    reservation_stmt = session.prepare(reservation_query)
+    reservation = session.execute(reservation_stmt, (old_book_id,)).one()
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+    
+    existing_reservation = session.execute(reservation_query, (book_id,)).one()
+    if existing_reservation:
+        raise HTTPException(
+            status_code=400, detail="This book is already reserved")
+    
+    update_query = "UPDATE reservations SET book_id = ?, user_id = ? WHERE book_id = ?"
+    update_stmt = session.prepare(update_query)
+    session.execute(update_stmt, (book_id, user_id, old_book_id))
+
+    # delete_query = "DELETE FROM reservations WHERE book_id = ?"
+    # delete_stmt = session.prepare(delete_query)
+    # session.execute(delete_stmt, (book_id,))
+    # return {"detail": "Reservation deleted"}
 
 
 if __name__ == "__main__":
