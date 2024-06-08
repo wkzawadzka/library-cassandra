@@ -179,10 +179,14 @@ def update_reservation(reservation_change: Update):
     update_stmt = session.prepare(update_query)
     session.execute(update_stmt, (book_id, user_id, old_book_id))
 
-    # delete_query = "DELETE FROM reservations WHERE book_id = ?"
-    # delete_stmt = session.prepare(delete_query)
-    # session.execute(delete_stmt, (book_id,))
-    # return {"detail": "Reservation deleted"}
+    updated_reservation = Reservation(
+        id=reservation.id,
+        user_id=user_id,
+        book_id=book_id,
+        reserved_at=reservation.reserved_at
+    )
+
+    return updated_reservation
 
 
 if __name__ == "__main__":
