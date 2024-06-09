@@ -188,6 +188,11 @@ def update_reservation(reservation_change: Update):
 
     return updated_reservation
 
+def delete_all_reservations():
+    query = SimpleStatement("TRUNCATE reservations")
+    session.execute(query)
+    return {"detail": "All reservations deleted"}
+
 
 if __name__ == "__main__":
     import uvicorn

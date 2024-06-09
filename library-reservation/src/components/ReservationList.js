@@ -10,6 +10,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import TableContainer from '@mui/material/TableContainer';
 import Table from '@mui/material/Table';
 import DeleteIcon from '@mui/icons-material/Delete';
+import UpdateIcon from '@mui/icons-material/Update';
 
 
 function ReservationList() {
@@ -128,15 +129,15 @@ function ReservationList() {
         <TableCell align="right">
           <IconButton onClick={(event) => {
             event.stopPropagation();
-            handleDeleteClick(row.book_id);
+            navigate(`/reservations/update/${row.book_id}`);
           }}>
-            <DeleteIcon />
+            <UpdateIcon />
           </IconButton>
         </TableCell>
         <TableCell align="right">
           <IconButton onClick={(event) => {
             event.stopPropagation();
-            navigate(`/reservations/update/${row.book_id}`);
+            handleDeleteClick(row.book_id);
           }}>
             <DeleteIcon />
           </IconButton>
