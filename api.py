@@ -52,6 +52,14 @@ def make_reservation(reservation_request: ReservationRequest):
     reservation_id = uuid4()
     reserved_at = datetime.datetime.now()
 
+    # check if the book in the library
+    check_query = "SELECT * FROM books WHERE id = ?"
+    check_statement = session.prepare(check_query)
+    book_exists = session.execute(check_statement, (book_id,)).one()
+    if not book_exists:
+        raise HTTPException(
+            status_code=404, detail="Book not in the library")
+
     # insert the reservation
     insert_query = """
     INSERT INTO reservations (id, user_id, book_id, reserved_at)
@@ -83,6 +91,14 @@ def update_reservation(reservation_change: Update):
     user_id = reservation_change.user_id
     book_id = reservation_change.book_id
 
+    # check if the book in the library
+    check_query = "SELECT * FROM books WHERE id = ?"
+    check_statement = session.prepare(check_query)
+    book_exists = session.execute(check_statement, (book_id,)).one()
+    if not book_exists:
+        raise HTTPException(
+            status_code=404, detail="Book not in the library")
+
     if old_book_id != book_id:
         # book_id (primary key) changed
         delete_reservation(old_book_id)
@@ -98,6 +114,9 @@ def update_reservation(reservation_change: Update):
         if not result.one().applied:
             raise HTTPException(
                 status_code=400, detail="Reservation not found")
+        select_query = "SELECT id, reserved_at FROM reservations WHERE book_id = ?"
+        select_stmt = session.prepare(select_query)
+        reservation = session.execute(select_stmt, (old_book_id,)).one()
 
     updated_reservation = Reservation(
         id=reservation.id,
