@@ -39,19 +39,16 @@ class Reservation(BaseModel):
     reserved_at: datetime.datetime
 
 
+class Update(BaseModel):
+    old_book_id: UUID4
+    user_id: UUID4
+    book_id: UUID4
+
+
 @app.post("/reservations/", response_model=Reservation)
 def make_reservation(reservation_request: ReservationRequest):
     user_id = reservation_request.user_id
     book_id = reservation_request.book_id
-
-    query = "SELECT book_id FROM reservations WHERE book_id = ?"
-    statement = session.prepare(query)
-    print(f"Executing query: {query} with book_id: {book_id}")
-    existing_reservation = session.execute(statement, (book_id,)).one()
-    if existing_reservation:
-        raise HTTPException(
-            status_code=400, detail="This book is already reserved")
-
     reservation_id = uuid4()
     reserved_at = datetime.datetime.now()
 
@@ -59,13 +56,14 @@ def make_reservation(reservation_request: ReservationRequest):
     insert_query = """
     INSERT INTO reservations (id, user_id, book_id, reserved_at)
     VALUES (?, ?, ?, ?)
+    IF NOT EXISTS
     """
     insert_statement = session.prepare(insert_query)
-    print(
-        f"Executing insert query: {insert_query} with id: {reservation_id}, user_id: {user_id}, book_id: {book_id}, reserved_at: {reserved_at}")
-
-    session.execute(insert_statement, (reservation_id,
-                    user_id, book_id, reserved_at))
+    result = session.execute(insert_statement, (reservation_id,
+                                                user_id, book_id, reserved_at))
+    if not result.one().applied:
+        raise HTTPException(
+            status_code=400, detail="This book is already reserved")
 
     reservation = Reservation(
         id=reservation_id,
@@ -74,6 +72,41 @@ def make_reservation(reservation_request: ReservationRequest):
         reserved_at=reserved_at
     )
     return reservation
+
+
+@app.put("/reservations/update/", response_model=Reservation)
+def update_reservation(reservation_change: Update):
+    # 2 cases:
+    #   user_id is changed, book_id unchanged -> use UPDATE
+    #   book_id changed -> DELETE & INSERT
+    old_book_id = reservation_change.old_book_id
+    user_id = reservation_change.user_id
+    book_id = reservation_change.book_id
+
+    if old_book_id != book_id:
+        # book_id (primary key) changed
+        delete_reservation(old_book_id)
+        reservation_request = ReservationRequest(
+            user_id=user_id, book_id=book_id)
+        reservation = make_reservation(reservation_request)
+
+    else:
+        # book_id did not change
+        update_query = "UPDATE reservations SET user_id = ? WHERE book_id = ? IF EXISTS"
+        update_stmt = session.prepare(update_query)
+        result = session.execute(update_stmt, (user_id, old_book_id))
+        if not result.one().applied:
+            raise HTTPException(
+                status_code=400, detail="Reservation not found")
+
+    updated_reservation = Reservation(
+        id=reservation.id,
+        user_id=user_id,
+        book_id=book_id,
+        reserved_at=reservation.reserved_at
+    )
+
+    return updated_reservation
 
 
 @app.get("/api/reservations")
@@ -141,15 +174,11 @@ async def get_reservation_details(book_id: UUID):
 
 @app.delete("/reservations/{book_id}")
 def delete_reservation(book_id: UUID):
-    reservation_query = "SELECT * FROM reservations WHERE book_id = ?"
-    reservation_stmt = session.prepare(reservation_query)
-    reservation = session.execute(reservation_stmt, (book_id,)).one()
-    if not reservation:
-        raise HTTPException(status_code=404, detail="Reservation not found")
-
-    delete_query = "DELETE FROM reservations WHERE book_id = ?"
+    delete_query = "DELETE FROM reservations WHERE book_id = ? IF EXISTS"
     delete_stmt = session.prepare(delete_query)
-    session.execute(delete_stmt, (book_id,))
+    result = session.execute(delete_stmt, (book_id,))
+    if not result.one().applied:
+        raise HTTPException(status_code=400, detail="Reservation not found")
     return {"detail": "Reservation deleted"}
 
 

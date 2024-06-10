@@ -27,3 +27,13 @@ Run `python setup.py`
 Run `uvicorn api:app --reload`
 
 Then in another terminal: `npm start`
+
+## Parameters
+
+▪ N - The number of replicas 3
+▪ W - The number of replicas that must respond to a write
+operation in order to consider that operation a success - 2
+▪ R - The number of replicas that must respond to a read
+operation - 2
+
+3/2/2 ratio was chosen as it is characterized by good durability and good R/W latency.
