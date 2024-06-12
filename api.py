@@ -7,6 +7,7 @@ import datetime
 from cassandra.cluster import Cluster
 from cassandra.query import SimpleStatement
 from cassandra import Unauthorized, ConsistencyLevel
+from typing import List
 
 cluster = Cluster(['127.0.0.1', '127.0.0.2', '127.0.0.3'])
 session = cluster.connect('library')
@@ -25,6 +26,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# global prepared statements
+check_statement = session.prepare("SELECT * FROM books WHERE id = ?")
+insert_statement = session.prepare("""
+    INSERT INTO reservations (id, user_id, book_id, reserved_at)
+    VALUES (?, ?, ?, ?)
+    IF NOT EXISTS
+    """)
+update_stmt = session.prepare(
+    "UPDATE reservations SET user_id = ? WHERE book_id = ? IF EXISTS")
+select_stmt = session.prepare(
+    "SELECT id, reserved_at FROM reservations WHERE book_id = ?")
+reservation_statement = session.prepare(
+    "SELECT * FROM reservations WHERE book_id = ?")
+delete_stmt = session.prepare(
+    "DELETE FROM reservations WHERE book_id = ? IF EXISTS")
 
 
 class ReservationRequest(BaseModel):
@@ -53,20 +70,12 @@ def make_reservation(reservation_request: ReservationRequest):
     reserved_at = datetime.datetime.now()
 
     # check if the book in the library
-    check_query = "SELECT * FROM books WHERE id = ?"
-    check_statement = session.prepare(check_query)
     book_exists = session.execute(check_statement, (book_id,)).one()
     if not book_exists:
         raise HTTPException(
             status_code=404, detail="Book not in the library")
 
     # insert the reservation
-    insert_query = """
-    INSERT INTO reservations (id, user_id, book_id, reserved_at)
-    VALUES (?, ?, ?, ?)
-    IF NOT EXISTS
-    """
-    insert_statement = session.prepare(insert_query)
     result = session.execute(insert_statement, (reservation_id,
                                                 user_id, book_id, reserved_at))
     if not result.one().applied:
@@ -92,8 +101,6 @@ def update_reservation(reservation_change: Update):
     book_id = reservation_change.book_id
 
     # check if the book in the library
-    check_query = "SELECT * FROM books WHERE id = ?"
-    check_statement = session.prepare(check_query)
     book_exists = session.execute(check_statement, (book_id,)).one()
     if not book_exists:
         raise HTTPException(
@@ -108,14 +115,10 @@ def update_reservation(reservation_change: Update):
 
     else:
         # book_id did not change
-        update_query = "UPDATE reservations SET user_id = ? WHERE book_id = ? IF EXISTS"
-        update_stmt = session.prepare(update_query)
         result = session.execute(update_stmt, (user_id, old_book_id))
         if not result.one().applied:
             raise HTTPException(
                 status_code=400, detail="Reservation not found")
-        select_query = "SELECT id, reserved_at FROM reservations WHERE book_id = ?"
-        select_stmt = session.prepare(select_query)
         reservation = session.execute(select_stmt, (old_book_id,)).one()
 
     updated_reservation = Reservation(
@@ -133,8 +136,7 @@ async def get_reservations(paging_state=None):
     '''
     Get all the reservations with pagination
     '''
-    query = "SELECT * FROM reservations"
-    statement = SimpleStatement(query, fetch_size=25)
+    statement = SimpleStatement("SELECT * FROM reservations", fetch_size=25)
 
     if paging_state:
         statement = statement.set_paging_state(bytes.fromhex(paging_state))
@@ -163,15 +165,11 @@ async def get_reservations(paging_state=None):
 
 @app.get("/api/reservations/{book_id}")
 async def get_reservation_details(book_id: UUID):
-    reservation_query = "SELECT * FROM reservations WHERE book_id = ?"
-    reservation_statement = session.prepare(reservation_query)
     reservation = session.execute(reservation_statement, (book_id,)).one()
     if not reservation:
         raise HTTPException(status_code=404, detail="Reservation not found")
 
-    book_query = "SELECT * FROM books WHERE id = ?"
-    book_statement = session.prepare(book_query)
-    book = session.execute(book_statement, (reservation.book_id,)).one()
+    book = session.execute(check_statement, (reservation.book_id,)).one()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
 
@@ -193,12 +191,25 @@ async def get_reservation_details(book_id: UUID):
 
 @app.delete("/reservations/{book_id}")
 def delete_reservation(book_id: UUID):
-    delete_query = "DELETE FROM reservations WHERE book_id = ? IF EXISTS"
-    delete_stmt = session.prepare(delete_query)
     result = session.execute(delete_stmt, (book_id,))
     if not result.one().applied:
         raise HTTPException(status_code=400, detail="Reservation not found")
     return {"detail": "Reservation deleted"}
+
+
+def delete_all_reservations():
+    # just for testing
+    session.execute("TRUNCATE reservations")
+    return {"detail": "All reservations deleted"}
+
+
+def get_all_book_ids() -> List[str]:
+    query = "SELECT id FROM books"
+    rows = session.execute(query)
+
+    book_ids = [row.id for row in rows]
+
+    return book_ids
 
 
 if __name__ == "__main__":
