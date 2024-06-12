@@ -83,7 +83,7 @@ Some tests has been prepared in `tests.py` and runned in `testing.ipynb`, those 
 We encountered two main problems that we solved during the developement of the app.
 ### 1. Consistencies among threads.
    
-While working with multiple threads we quickly realized that even the smallest latency of comunicating between threads will cause problems. We knew the issue would arise during stress testing our system and we wanted to fix it as soon as it was possible. We found a good solution to this problem was using "IF EXISTS" is our statements, particularly in the insert, update and delete. This command works on the basis of Paxos algorithm and prevents any inconsistencies between threads. It did not prolong the response time of queries and we prevented mistakes that might have occured with multiple users.
+While working with multiple nodes we quickly realized that even the smallest latency of comunicating between noes will cause problems. We knew the issue would arise during stress testing our system and we wanted to fix it as soon as it was possible. We found a good solution to this problem was using "IF EXISTS" is our statements, particularly in the insert, update and delete. This command works on the basis of Paxos algorithm and prevents any inconsistencies between threads. It did not prolong the response time of queries and we prevented mistakes that might have occured with multiple users.
 
 ### 2. Processing time.
 
