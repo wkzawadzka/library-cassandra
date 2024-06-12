@@ -78,7 +78,7 @@ Some tests has been prepared in `tests.py` and runned in `testing.ipynb`, those 
 
 ## Demo
 
-<video controls>
-  <source src="demo/demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+
+https://github.com/wkzawadzka/library-cassandra/assets/49953771/9cc3be13-c125-46cd-8dc1-9373c4532959
+
+
