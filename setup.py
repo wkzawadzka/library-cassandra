@@ -54,7 +54,7 @@ def setup_cassandra(n_books=15000):
         id UUID,
         author TEXT,
         image_url TEXT,
-        PRIMARY KEY ((id), title)
+        PRIMARY KEY ((id))
     );
     """)
 

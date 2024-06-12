@@ -1,5 +1,4 @@
 import api
-import setup
 import unittest
 from uuid import UUID, uuid4
 from tqdm import tqdm
